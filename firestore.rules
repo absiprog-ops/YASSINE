@@ -1,0 +1,176 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ab.yassine1988@gmail.com' ||
+        request.auth.token.email == 'contact@maghaimmobilier.com' ||
+        request.auth.token.email == 'contact@maghaimmobillier.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Entity validation helpers
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll(['siteTitle', 'contactPhone', 'emailAddress']) &&
+             data.siteTitle is string && data.siteTitle.size() <= 300 &&
+             data.contactPhone is string && data.contactPhone.size() <= 50 &&
+             data.emailAddress is string && data.emailAddress.size() <= 100;
+    }
+
+    function isValidApartment(data) {
+      return data.keys().hasAll(['id', 'code', 'title', 'floor', 'status', 'price']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.code is string && data.code.size() <= 50 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.floor is string && data.floor.size() <= 50 &&
+             data.status is string && (data.status == 'AVAILABLE' || data.status == 'RESERVED' || data.status == 'SOLD') &&
+             (data.price is number || data.price is int) && data.price >= 0;
+    }
+
+    function isValidPaint(data) {
+      return data.keys().hasAll(['id', 'category', 'nameAr', 'pricePerSqm']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.nameAr is string && data.nameAr.size() <= 200 &&
+             (data.pricePerSqm is number || data.pricePerSqm is int) && data.pricePerSqm >= 0;
+    }
+
+    function isValidPartner(data) {
+      return data.keys().hasAll(['id', 'name', 'category', 'isActive']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 200 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.isActive is bool;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['id', 'userName', 'rating', 'comment', 'isApproved']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.userName is string && data.userName.size() <= 150 &&
+             (data.rating is number || data.rating is int) && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() <= 2000 &&
+             data.isApproved is bool;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'userId', 'userFullName', 'userCin', 'apartmentId', 'grandTotal', 'status']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.userFullName is string && data.userFullName.size() <= 150 &&
+             data.userCin is string && data.userCin.size() <= 50 &&
+             data.apartmentId is string && data.apartmentId.size() <= 128 &&
+             (data.grandTotal is number || data.grandTotal is int) && data.grandTotal >= 0 &&
+             data.status is string && (data.status in ['PENDING', 'REVIEWED', 'APPROVED', 'CONTACTED', 'REJECTED']);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'fullName', 'cin', 'phone', 'email']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.fullName is string && data.fullName.size() <= 150 &&
+             data.cin is string && data.cin.size() <= 50 &&
+             data.phone is string && data.phone.size() <= 50 &&
+             data.email is string && data.email.size() <= 100;
+    }
+
+    // 1. Settings Collection
+    match /settings/{settingId} {
+      allow get, list: if true;
+      allow write: if isAdmin() && isValidSiteSettings(incoming());
+    }
+
+    // 2. Apartments Collection
+    match /apartments/{apartmentId} {
+      allow get, list: if true;
+      allow create, update, delete: if isValidId(apartmentId) && isAdmin() && (request.method == 'delete' || isValidApartment(incoming()));
+    }
+
+    // 3. Paints Catalog Collection
+    match /paintsCatalog/{paintId} {
+      allow get, list: if true;
+      allow create, update, delete: if isValidId(paintId) && isAdmin() && (request.method == 'delete' || isValidPaint(incoming()));
+    }
+
+    // 4. Partners Collection
+    match /partners/{partnerId} {
+      allow get, list: if true;
+      allow create, update, delete: if isValidId(partnerId) && isAdmin() && (request.method == 'delete' || isValidPartner(incoming()));
+    }
+
+    // 5. Reviews Collection
+    match /reviews/{reviewId} {
+      allow get, list: if true;
+      allow create: if isValidId(reviewId) && isValidReview(incoming()) && (
+        isAdmin() || incoming().isApproved == false
+      );
+      allow update: if isValidId(reviewId) && (
+        isAdmin() ||
+        (
+          // Allow users to like reviews (incrementing likesCount only)
+          incoming().diff(existing()).affectedKeys().hasOnly(['likesCount']) &&
+          incoming().likesCount == existing().likesCount + 1
+        )
+      );
+      allow delete: if isValidId(reviewId) && isAdmin();
+    }
+
+    // 6. Orders Collection
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && (isAdmin() || (isSignedIn() && existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidId(orderId) && isValidOrder(incoming()) && (
+        isAdmin() || (isSignedIn() && incoming().userId == request.auth.uid) || incoming().userId != null
+      );
+      allow update: if isValidId(orderId) && (
+        isAdmin() ||
+        (
+          isSignedIn() &&
+          existing().userId == request.auth.uid &&
+          isValidOrder(incoming()) &&
+          incoming().userId == existing().userId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['roomCustomizations', 'grandTotal', 'totalCustomizationPrice'])
+        )
+      );
+      allow delete: if isValidId(orderId) && (isAdmin() || (isSignedIn() && existing().userId == request.auth.uid));
+    }
+
+    // 7. Users Collection
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isAdmin() || isOwner(userId));
+      allow list: if isAdmin();
+      allow create, update: if isValidId(userId) && isValidUser(incoming()) && (
+        isAdmin() || isOwner(userId)
+      ) && (
+        !('role' in incoming()) || incoming().role != 'ADMIN' || isAdmin()
+      );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+  }
+}

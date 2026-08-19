@@ -1,0 +1,147 @@
+{
+  "entities": {
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global website configurations, contact info and theme settings",
+      "type": "object",
+      "properties": {
+        "siteTitle": { "type": "string", "maxLength": 200 },
+        "siteSubtitle": { "type": "string", "maxLength": 500 },
+        "contactPhone": { "type": "string", "maxLength": 50 },
+        "whatsappNumber": { "type": "string", "maxLength": 50 },
+        "emailAddress": { "type": "string", "maxLength": 100 },
+        "addressText": { "type": "string", "maxLength": 300 },
+        "currencySymbol": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["siteTitle", "contactPhone", "emailAddress"]
+    },
+    "Apartment": {
+      "title": "Apartment",
+      "description": "R+2 Apartment record detailing specifications, floor, price, and polygon mappings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 50 },
+        "title": { "type": "string", "maxLength": 200 },
+        "floor": { "type": "string", "maxLength": 50 },
+        "floorNameAr": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["AVAILABLE", "RESERVED", "SOLD"] },
+        "areaSqm": { "type": "number" },
+        "price": { "type": "number" },
+        "descriptionAr": { "type": "string", "maxLength": 2000 }
+      },
+      "required": ["id", "code", "title", "floor", "status", "price"]
+    },
+    "PaintTypeOption": {
+      "title": "PaintTypeOption",
+      "description": "Paint option entry in the catalog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "category": { "type": "string", "maxLength": 100 },
+        "nameAr": { "type": "string", "maxLength": 150 },
+        "nameFr": { "type": "string", "maxLength": 150 },
+        "pricePerLiter": { "type": "number" },
+        "pricePerSqm": { "type": "number" }
+      },
+      "required": ["id", "category", "nameAr", "pricePerSqm"]
+    },
+    "PartnerSponsor": {
+      "title": "PartnerSponsor",
+      "description": "Partner or sponsor information for building finishing materials",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "descriptionAr": { "type": "string", "maxLength": 1000 },
+        "isFeatured": { "type": "boolean" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "name", "category", "isActive"]
+    },
+    "ServiceReview": {
+      "title": "ServiceReview",
+      "description": "Customer feedback and review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 150 },
+        "rating": { "type": "number" },
+        "serviceCategory": { "type": "string", "maxLength": 100 },
+        "comment": { "type": "string", "maxLength": 2000 },
+        "date": { "type": "string", "maxLength": 50 },
+        "likesCount": { "type": "number" },
+        "isApproved": { "type": "boolean" }
+      },
+      "required": ["id", "userName", "rating", "comment", "isApproved"]
+    },
+    "ClientOrder": {
+      "title": "ClientOrder",
+      "description": "Apartment reservation and paint customization request order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userFullName": { "type": "string", "maxLength": 150 },
+        "userCin": { "type": "string", "maxLength": 50 },
+        "userPhone": { "type": "string", "maxLength": 50 },
+        "userEmail": { "type": "string", "maxLength": 100 },
+        "apartmentId": { "type": "string", "maxLength": 128 },
+        "apartmentCode": { "type": "string", "maxLength": 50 },
+        "totalApartmentPrice": { "type": "number" },
+        "totalCustomizationPrice": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "status": { "type": "string", "enum": ["PENDING", "REVIEWED", "APPROVED", "CONTACTED", "REJECTED"] },
+        "submittedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "userId", "userFullName", "userCin", "apartmentId", "grandTotal", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with registration details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 150 },
+        "cin": { "type": "string", "maxLength": 50 },
+        "address": { "type": "string", "maxLength": 300 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["CLIENT", "ADMIN"] },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "fullName", "cin", "phone", "email"]
+    }
+  },
+  "firestore": {
+    "/settings/config": {
+      "schema": "SiteSettings",
+      "description": "Global website settings and theme configuration"
+    },
+    "/apartments/{apartmentId}": {
+      "schema": "Apartment",
+      "description": "Apartments available for reservation and customization"
+    },
+    "/paintsCatalog/{paintId}": {
+      "schema": "PaintTypeOption",
+      "description": "Catalog of available paint finishes, colors, and prices"
+    },
+    "/partners/{partnerId}": {
+      "schema": "PartnerSponsor",
+      "description": "Sponsors and partner suppliers for finishing"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "ServiceReview",
+      "description": "Customer ratings and reviews"
+    },
+    "/orders/{orderId}": {
+      "schema": "ClientOrder",
+      "description": "Apartment reservations and paint customization orders"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Registered user accounts and client profiles"
+    }
+  }
+}

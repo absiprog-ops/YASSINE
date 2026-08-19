@@ -1,0 +1,8 @@
+{
+  "name": "Remix ono Magha immobilier R+2",
+  "description": "Magha immobilier ",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
